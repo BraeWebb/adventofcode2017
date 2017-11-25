@@ -5,6 +5,8 @@ from enum import Enum
 import subprocess
 from shutil import copyfile
 import timeit
+import argparse
+import re
 
 ROOT_DIR = "."
 DIRECTORY_STRUCTURE = ["*.py", "*.in"]
@@ -35,6 +37,7 @@ def log(message, level=LogLevel.LOG):
         level (LogLevel, optional): The logging level of the message.
     """
     print(level.value + str(message) + '\033[0m')
+    sys.stdout.flush()
 
 def verify(root, structure, day):
     """
@@ -79,7 +82,7 @@ def verify(root, structure, day):
     return not_found
             
 
-def run_day(day):
+def run_day(day, time=False, timeout=TIMEOUT):
     """
     Verify and run a day script.
 
@@ -95,6 +98,7 @@ def run_day(day):
         for file in not_found:
             log(f"Failed to find {file}", level=LogLevel.ERROR)
         log(f"Skipping {day}.", level=LogLevel.WARNING)
+        log("")
         return
     else:
         log(f"{day} directory verified.", level=LogLevel.SUCCESS)
@@ -105,7 +109,7 @@ def run_day(day):
     with open(input_file) as f:
         file_input = f.read()
 
-    def run_process(timeout=TIMEOUT):
+    def run_process(timeout=timeout):
         process = subprocess.run(["python3", python_file],
                                  input=file_input,
                                  encoding='utf-8',
@@ -114,34 +118,24 @@ def run_day(day):
                                  timeout=timeout)
         return process
 
-    timer = timeit.Timer(lambda: run_process(timeout=TIMER_TIMEOUT))
-    try:
-        log(f"{day} ran in {timer.timeit(TIMES)/TIMES:.4f} seconds.",
-            level=LogLevel.SUCCESS)
-    except subprocess.TimeoutExpired:
-        log(f"{day} timed out measuring time taken", level=LogLevel.WARNING)
+    if time:
+        timer = timeit.Timer(lambda: run_process(timeout=TIMER_TIMEOUT))
+        try:
+            log(f"{day} ran in {timer.timeit(TIMES)/TIMES:.4f} seconds.",
+                level=LogLevel.SUCCESS)
+        except subprocess.TimeoutExpired:
+            log(f"{day} timed out measuring time taken", level=LogLevel.WARNING)
 
-    log("")
+        log("")
 
     log(f"{day} output:")
     try:
         log(run_process().stdout, LogLevel.DEBUG)
     except subprocess.TimeoutExpired:
-        log(f"{day} timed out after {TIMEOUT} seconds", level=LogLevel.WARNING)
+        log(f"{day} timed out after {timeout} seconds", level=LogLevel.WARNING)
+        log("")
     
-
-def run(*days):
-    """
-    Run all of the days provided as parameters.
-
-    Parameters:
-        days (*str): The directory to find a day.
-    """
-    for day in days:
-        log(f"Loading {day}...")
-        run_day(day)
-
-def make_day(day, input):
+def make_day(day):
     root = day
     day = day.split('/')[-1]
     
@@ -151,9 +145,15 @@ def make_day(day, input):
     input_file = f"{root}/{INPUT_FILE.replace('*', day)}"
     
     with open(input_file, "w+") as file:
-        file.write(' '.join(input))
+        file.write('')
 
     copyfile(TEMPLATE_FILE, python_file)
+
+def natural_sort(l):
+    # credit https://stackoverflow.com/a/4836734
+    convert = lambda text: int(text) if text.isdigit() else text.lower() 
+    alphanum_key = lambda key: [ convert(c) for c in re.split('([0-9]+)', key) ] 
+    return sorted(l, key = alphanum_key)
 
 def main():
     """
@@ -173,13 +173,32 @@ def main():
         # load day 21 in a different directory
         ./hap.py ../otherdir/day21
     """
-    if len(sys.argv) == 1:
-        run(*[d for d in os.listdir(ROOT_DIR)
-              if os.path.isdir(d) and not d.startswith('.')])
-    elif len(sys.argv) >= 3 and sys.argv[1] == LOAD_CMD:
-        make_day(sys.argv[2], sys.argv[3:])
-    else:
-        run(*sys.argv[1:])
+    parser = argparse.ArgumentParser(description="Run Advent of Code Scripts")
+    
+    parser.add_argument('-l', '--load-day', dest='load', action='store_true',
+                        help='generate new day directories')
+    parser.add_argument('-t', '--time', dest='timeit', action='store_true',
+                        help='time how long days take to run')
+    parser.add_argument('-to', '--timeout',
+                        dest='timeout', type=int, default=60,
+                        help='specify timeout for running a day (default: 60)')
+    parser.add_argument('days', nargs='*', help='days to run')
+    
+    args = parser.parse_args()
+    if args.load:
+        for day in args.days:
+            make_day(day)
+        return
+
+    days = args.days
+    if len(args.days) == 0:
+        days = natural_sort([d for d in os.listdir(ROOT_DIR)
+                             if os.path.isdir(d)
+                             and not d.startswith('.')]) 
+
+    for day in days:
+        log(f"Loading {day}...")
+        run_day(day, time=args.timeit, timeout=args.timeout)
 
 if __name__ == "__main__":
     main()

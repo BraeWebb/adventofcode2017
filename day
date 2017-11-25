@@ -1,6 +1,6 @@
 import sys
 
-def run(input):
+def run(stdin):
     pass
 
 if __name__ == "__main__":
