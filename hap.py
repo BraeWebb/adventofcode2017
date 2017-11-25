@@ -167,7 +167,8 @@ def main():
         ./hap.py ../otherdir/day21
     """
     if len(sys.argv) == 1:
-        run(*[d for d in os.listdir(ROOT_DIR) if os.path.isdir(d)])
+        run(*[d for d in os.listdir(ROOT_DIR)
+              if os.path.isdir(d) and not d.startswith('.')])
     elif len(sys.argv) >= 3 and sys.argv[1] == LOAD_CMD:
         make_day(sys.argv[2], sys.argv[3:])
     else:
