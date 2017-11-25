@@ -8,11 +8,12 @@ import timeit
 
 ROOT_DIR = "."
 DIRECTORY_STRUCTURE = ["*.py", "*.in"]
-TIMEOUT = 10
+TIMEOUT = 60
 PYTHON_FILE = "*.py"
 INPUT_FILE = "*.in"
 LOAD_CMD = "load"
 TIMES = 10
+TIMER_TIMEOUT = 6
 TEMPLATE_FILE = "day"
 
 class LogLevel(Enum):
@@ -104,23 +105,29 @@ def run_day(day):
     with open(input_file) as f:
         file_input = f.read()
 
-    def run_process():
+    def run_process(timeout=TIMEOUT):
         process = subprocess.run(["python3", python_file],
                                  input=file_input,
                                  encoding='utf-8',
                                  stdout=subprocess.PIPE,
                                  stderr=subprocess.PIPE,
-                                 timeout=TIMEOUT)
+                                 timeout=timeout)
         return process
 
-    timer = timeit.Timer(run_process)
-    log(f"{day} ran in {timer.timeit(TIMES)/TIMES:.4f} seconds.",
-        level=LogLevel.SUCCESS)
+    timer = timeit.Timer(lambda: run_process(timeout=TIMER_TIMEOUT))
+    try:
+        log(f"{day} ran in {timer.timeit(TIMES)/TIMES:.4f} seconds.",
+            level=LogLevel.SUCCESS)
+    except subprocess.TimeoutExpired:
+        log(f"{day} timed out measuring time taken", level=LogLevel.WARNING)
 
     log("")
 
     log(f"{day} output:")
-    log(run_process().stdout, LogLevel.DEBUG)
+    try:
+        log(run_process().stdout, LogLevel.DEBUG)
+    except subprocess.TimeoutExpired:
+        log(f"{day} timed out after {TIMEOUT} seconds", level=LogLevel.WARNING)
     
 
 def run(*days):
