@@ -8,15 +8,28 @@ import timeit
 import argparse
 import re
 
+# the default directory to search
 ROOT_DIR = "."
-DIRECTORY_STRUCTURE = ["*.py", "*.in"]
+# the required structure of each day directory
+DIRECTORY_STRUCTURE = ["*.py", "*.c", "*.in"]
+
+# default timeout
 TIMEOUT = 60
-PYTHON_FILE = "*.py"
-INPUT_FILE = "*.in"
-LOAD_CMD = "load"
+# amount of times to run to test speed
 TIMES = 10
+# timeout for time trials
 TIMER_TIMEOUT = 6
-TEMPLATE_FILE = "day"
+
+# input file
+INPUT_FILE = "*.in"
+
+# python files
+PYTHON_FILE = "*.py"
+PYTHON_TEMPLATE = "day.py"
+
+# c files
+C_FILE = "*.c"
+C_TEMPLATE = "day.c"
 
 class LogLevel(Enum):
     """
@@ -138,16 +151,22 @@ def run_day(day, time=False, timeout=TIMEOUT):
 def make_day(day):
     root = day
     day = day.split('/')[-1]
+
+    if os.path.isdir(root):
+        log(f"{day} already exists", level=LogLevel.ERROR)
+        return
     
     os.mkdir(root)
 
     python_file = f"{root}/{PYTHON_FILE.replace('*', day)}"
+    c_file = f"{root}/{C_FILE.replace('*', day)}"
     input_file = f"{root}/{INPUT_FILE.replace('*', day)}"
     
     with open(input_file, "w+") as file:
         file.write('')
 
-    copyfile(TEMPLATE_FILE, python_file)
+    copyfile(PYTHON_TEMPLATE, python_file)
+    copyfile(C_TEMPLATE, c_file)
 
 def natural_sort(l):
     # credit https://stackoverflow.com/a/4836734
@@ -175,7 +194,7 @@ def main():
     """
     parser = argparse.ArgumentParser(description="Run Advent of Code Scripts")
     
-    parser.add_argument('-l', '--load-day', dest='load', action='store_true',
+    parser.add_argument('-c', '--create', dest='create', action='store_true',
                         help='generate new day directories')
     parser.add_argument('-t', '--time', dest='timeit', action='store_true',
                         help='time how long days take to run')
@@ -185,7 +204,7 @@ def main():
     parser.add_argument('days', nargs='*', help='days to run')
     
     args = parser.parse_args()
-    if args.load:
+    if args.create:
         for day in args.days:
             make_day(day)
         return
