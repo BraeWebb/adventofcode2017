@@ -1,28 +1,19 @@
 import sys
 
-def star_one(line):
+def sum_matching(line, index_func=lambda x: x + 1):
     max = len(line)
     sum = 0
     for i, num in enumerate(line):
-        if num == line[(i + 1) % max]:
-            sum += int(num)
-    return sum
-
-def star_two(line):
-    max = len(line)
-    sum = 0
-    midway = max // 2
-    for i, num in enumerate(line):
-        x = (i + midway) % max
-        if num == line[x]:
+        if num == line[index_func(i) % max]:
             sum += int(num)
     return sum
 
 def run(stdin):
     line = stdin.splitlines()[0]
+    max = len(line)
 
-    print(star_one(line))
-    print(star_two(line))
+    print(sum_matching(line))
+    print(sum_matching(line, index_func=lambda i: i + (max // 2)))
 
 if __name__ == "__main__":
     run(sys.stdin.read())
