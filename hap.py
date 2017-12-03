@@ -7,6 +7,7 @@ from shutil import copyfile
 import timeit
 import argparse
 import re
+from collections import OrderedDict
 
 # the default directory to search
 ROOT_DIR = "."
@@ -117,36 +118,51 @@ def run_day(day, time=False, timeout=TIMEOUT):
         log(f"{day} directory verified.", level=LogLevel.SUCCESS)
 
     python_file = f"{root}/{PYTHON_FILE.replace('*', day)}"
+    c_file = f"{root}/{C_FILE.replace('*', day)}"
+    c_out_file = c_file.replace('.c', '.exe')
     input_file = f"{root}/{INPUT_FILE.replace('*', day)}"
     
     with open(input_file) as f:
         file_input = f.read()
 
-    def run_process(timeout=timeout):
-        process = subprocess.run(["python3", python_file],
-                                 input=file_input,
-                                 encoding='utf-8',
-                                 stdout=subprocess.PIPE,
-                                 stderr=subprocess.PIPE,
-                                 timeout=timeout)
-        return process
+    # compile c files
+    process = subprocess.run(("make", "build", f"DAY={day}"), encoding='utf-8',
+                   stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if process.stderr:
+        log(process.stderr, level=LogLevel.ERROR)
+    log(process.stdout)
 
-    if time:
-        timer = timeit.Timer(lambda: run_process(timeout=TIMER_TIMEOUT))
+    run = OrderedDict([("py", ("python3", python_file)), ("c", (c_out_file))])
+
+    def run_process(timeout=timeout, label="py"):
         try:
-            log(f"{day} ran in {timer.timeit(TIMES)/TIMES:.4f} seconds.",
-                level=LogLevel.SUCCESS)
+            process = subprocess.run(run[label],
+                                     input=file_input,
+                                     encoding='utf-8',
+                                     stdout=subprocess.PIPE,
+                                     stderr=subprocess.PIPE,
+                                     timeout=timeout)
+            return process
         except subprocess.TimeoutExpired:
-            log(f"{day} timed out measuring time taken", level=LogLevel.WARNING)
+            log(f"{day}.{label} timed out after {timeout} seconds",
+                level=LogLevel.WARNING)
+            log("")
 
-        log("")
+    for label in run:
+        if time:
+            timer = timeit.Timer(lambda: run_process(timeout=TIMER_TIMEOUT,
+                                                     label=label))
+            log(f"{day}.{label} ran in {timer.timeit(TIMES)/TIMES:.4f} seconds.",
+                level=LogLevel.SUCCESS)
 
-    log(f"{day} output:")
-    try:
-        log(run_process().stdout, LogLevel.DEBUG)
-    except subprocess.TimeoutExpired:
-        log(f"{day} timed out after {timeout} seconds", level=LogLevel.WARNING)
-        log("")
+        log(f"{day}.{label} output:")
+        process = run_process(label=label)
+        if process is not None:
+            if process.stderr:
+                log(process.stderr, LogLevel.ERROR)
+            log(process.stdout, LogLevel.DEBUG)
+
+
     
 def make_day(day):
     root = day
