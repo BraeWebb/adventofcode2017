@@ -8,8 +8,11 @@ all: $(DAYS)
 		make build DAY=$$day; \
 	done
 
-build: clean $(DAY)/$(DAY).c
-	$(CC) $(FLAGS) $(DAY)/$(DAY).c -o $(DAY)/$(DAY)
+api.o: api.c api.h
+	$(CC) $(FLAGS) -c api.c -o api.o
+
+build: clean $(DAY)/$(DAY).c api.o
+	$(CC) $(FLAGS) $(DAY)/$(DAY).c api.o -o $(DAY)/$(DAY)
 
 clean: $(DAYS)
 	@for dir in $(DAYS); do \
