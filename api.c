@@ -46,3 +46,29 @@ Input* load_input() {
 
     return input;
 }
+
+SplitResult* split(char* string, char character) {
+	char** words = malloc(sizeof(char*));
+	char* word = malloc(sizeof(char) * BUFFER_SIZE);
+	int count = 0;
+	int index = 0;
+	for (int i = 0; i < strlen(string); i++) {
+		if (string[i] == ' ') {
+			words = realloc(words, sizeof(char*) * count + 1);
+			words[count++] = word;
+			word = malloc(sizeof(char) * BUFFER_SIZE);
+			index = 0;
+		} else {
+			index += sprintf(&word[index], "%c", string[i]);
+		}
+	}
+
+	words = realloc(words, sizeof(char*) * count + 1);
+	words[count++] = word;
+
+	SplitResult* result = malloc(sizeof(SplitResult));
+	result->strings = words;
+	result->count = count;
+
+	return result;
+}
