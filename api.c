@@ -49,22 +49,22 @@ Input* load_input() {
 
 SplitResult* split(char* string, char character) {
 	char** words = malloc(sizeof(char*));
-	char* word = malloc(sizeof(char) * BUFFER_SIZE);
+	char* word = malloc(sizeof(char) * 256);
 	int count = 0;
 	int index = 0;
 	for (int i = 0; i < strlen(string); i++) {
-		if (string[i] == ' ') {
-			words = realloc(words, sizeof(char*) * count + 1);
-			words[count++] = word;
-			word = malloc(sizeof(char) * BUFFER_SIZE);
+		if (string[i] == character) {
+			words = realloc(words, sizeof(char*) * ++count);
+			words[count-1] = word;
+			word = malloc(sizeof(char) * 256);
 			index = 0;
 		} else {
 			index += sprintf(&word[index], "%c", string[i]);
 		}
 	}
 
-	words = realloc(words, sizeof(char*) * count + 1);
-	words[count++] = word;
+	words = realloc(words, sizeof(char*) * ++count);
+	words[count-1] = word;
 
 	SplitResult* result = malloc(sizeof(SplitResult));
 	result->strings = words;
