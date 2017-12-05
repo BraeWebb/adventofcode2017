@@ -12,7 +12,7 @@ from collections import OrderedDict
 # the default directory to search
 ROOT_DIR = "."
 # the required structure of each day directory
-DIRECTORY_STRUCTURE = ["*.py", "*.c", "*.in"]
+DIRECTORY_STRUCTURE = ["*.py", "*.c", "*.in", "*.java"]
 
 # default timeout
 TIMEOUT = 60
@@ -31,6 +31,10 @@ PYTHON_TEMPLATE = "day.py"
 # c files
 C_FILE = "*.c"
 C_TEMPLATE = "day.c"
+
+# java files
+JAVA_FILE = "*.java"
+JAVA_TEMPLATE = "day.java"
 
 class LogLevel(Enum):
     """
@@ -118,21 +122,33 @@ def run_day(day, time=False, timeout=TIMEOUT):
         log(f"{day} directory verified.", level=LogLevel.SUCCESS)
 
     python_file = f"{root}/{PYTHON_FILE.replace('*', day)}"
+
     c_file = f"{root}/{C_FILE.replace('*', day)}"
     c_out_file = c_file.replace('.c', '.exe')
+
+    java_file = f"{root}/{JAVA_FILE.replace('*', day)}"
+
     input_file = f"{root}/{INPUT_FILE.replace('*', day)}"
     
     with open(input_file) as f:
         file_input = f.read()
 
-    # compile c files
-    process = subprocess.run(("make", "build", f"DAY={day}"), encoding='utf-8',
-                   stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    if process.stderr:
-        log(process.stderr, level=LogLevel.ERROR)
-    log(process.stdout)
+    def compile(args):
+        process = subprocess.run(args, encoding='utf-8',
+                                 stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE)
+        if process.stderr:
+            log(process.stderr, level=LogLevel.ERROR)
+        log(process.stdout)
 
-    run = OrderedDict([("py", ("python3", python_file)), ("c", (c_out_file))])
+    # compile c files
+    compile(("make", "build", f"DAY={day}"))
+    # compile java files
+    compile(("javac", java_file))
+
+    run = OrderedDict([("py", ("python3", python_file)),
+                       ("c", (c_out_file)),
+                       ("java", ("java", "-cp", day, day))])
 
     def run_process(timeout=timeout, label="py"):
         try:
@@ -176,6 +192,7 @@ def make_day(day):
 
     python_file = f"{root}/{PYTHON_FILE.replace('*', day)}"
     c_file = f"{root}/{C_FILE.replace('*', day)}"
+    java_file = f"{root}/{JAVA_FILE.replace('*', day)}"
     input_file = f"{root}/{INPUT_FILE.replace('*', day)}"
     
     with open(input_file, "w+") as file:
@@ -183,6 +200,13 @@ def make_day(day):
 
     copyfile(PYTHON_TEMPLATE, python_file)
     copyfile(C_TEMPLATE, c_file)
+    copyfile(JAVA_TEMPLATE, java_file)
+
+    with open(java_file, 'r') as file:
+        java_text = file.read()
+    java_text = java_text.replace('{day}', day)
+    with open(java_file, 'w') as file:
+        file.write(java_text)
 
 def natural_sort(l):
     # credit https://stackoverflow.com/a/4836734
