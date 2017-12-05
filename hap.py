@@ -100,7 +100,7 @@ def verify(root, structure, day):
     return not_found
             
 
-def run_day(day, time=False, timeout=TIMEOUT):
+def run_day(day, time=False, timeout=TIMEOUT, programs=("py", "c", "java")):
     """
     Verify and run a day script.
 
@@ -133,6 +133,13 @@ def run_day(day, time=False, timeout=TIMEOUT):
     with open(input_file) as f:
         file_input = f.read()
 
+    run = OrderedDict([("py",
+                        (False, ("python3", python_file))),
+                       ("c",
+                        (("make", "build", f"DAY={day}"), c_out_file)),
+                       ("java",
+                        (("javac", java_file), ("java", "-cp", day, day)))])
+
     def compile(args):
         process = subprocess.run(args, encoding='utf-8',
                                  stdout=subprocess.PIPE,
@@ -141,18 +148,11 @@ def run_day(day, time=False, timeout=TIMEOUT):
             log(process.stderr, level=LogLevel.ERROR)
         log(process.stdout)
 
-    # compile c files
-    compile(("make", "build", f"DAY={day}"))
-    # compile java files
-    compile(("javac", java_file))
 
-    run = OrderedDict([("py", ("python3", python_file)),
-                       ("c", (c_out_file)),
-                       ("java", ("java", "-cp", day, day))])
 
     def run_process(timeout=timeout, label="py"):
         try:
-            process = subprocess.run(run[label],
+            process = subprocess.run(run[label][1],
                                      input=file_input,
                                      encoding='utf-8',
                                      stdout=subprocess.PIPE,
@@ -164,7 +164,14 @@ def run_day(day, time=False, timeout=TIMEOUT):
                 level=LogLevel.WARNING)
             log("")
 
-    for label in run:
+    for label in programs:
+        if label not in run:
+            log(f"{label} is not a valid program.", level=LogLevel.ERROR)
+            return
+
+        if run[label][0]:
+            compile(run[label][0])
+
         if time:
             timer = timeit.Timer(lambda: run_process(timeout=TIMER_TIMEOUT,
                                                      label=label))
@@ -177,7 +184,6 @@ def run_day(day, time=False, timeout=TIMEOUT):
             if process.stderr:
                 log(process.stderr, LogLevel.ERROR)
             log(process.stdout, LogLevel.DEBUG)
-
 
     
 def make_day(day):
@@ -236,6 +242,8 @@ def main():
     
     parser.add_argument('-c', '--create', dest='create', action='store_true',
                         help='generate new day directories')
+    parser.add_argument('-p', '--program', dest='programs', action='append',
+                        help='which types of programs to run')
     parser.add_argument('-t', '--time', dest='timeit', action='store_true',
                         help='time how long days take to run')
     parser.add_argument('-to', '--timeout',
@@ -257,7 +265,11 @@ def main():
 
     for day in days:
         log(f"Loading {day}...")
-        run_day(day, time=args.timeit, timeout=args.timeout)
+        if args.programs:
+            run_day(day, time=args.timeit, timeout=args.timeout,
+                    programs=args.programs)
+        else:
+            run_day(day, time=args.timeit, timeout=args.timeout)
 
 if __name__ == "__main__":
     main()
